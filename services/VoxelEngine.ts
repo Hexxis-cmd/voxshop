@@ -873,8 +873,11 @@ export class VoxelEngine {
       this.bakedAOEnabled = enabled;
       this.bakedAOStrength = strength;
       if (this.rigGroup) {
-          const skinnedMesh = this.rigGroup.children.find(c => c instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh | undefined;
-          if (skinnedMesh) { const old = skinnedMesh.geometry; skinnedMesh.geometry = this.buildSkinnedGeo(this.solidPreviewEnabled); old.dispose(); }
+          const hasEmissiveVoxels = this.voxels.some(v => v.materialType === VoxelMaterial.EMISSIVE);
+          (this.rigGroup.children.filter(c => c instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh[]).forEach(sm => {
+              const f = hasEmissiveVoxels ? (sm.name === 'skinned_emissive' ? 'emissive' : 'non-emissive') : undefined;
+              const old = sm.geometry; sm.geometry = this.buildSkinnedGeo(this.solidPreviewEnabled, f); old.dispose();
+          });
       } else if (this.solidPreviewEnabled) {
           this.refreshSolidPreview();
       }
@@ -904,7 +907,7 @@ export class VoxelEngine {
       }
   }
 
-  private buildSkinnedGeo(hiddenFaceRemoval: boolean): THREE.BufferGeometry {
+  private buildSkinnedGeo(hiddenFaceRemoval: boolean, filter?: 'emissive' | 'non-emissive'): THREE.BufferGeometry {
       const h = hiddenFaceRemoval ? CONFIG.VOXEL_SIZE / 2 : (CONFIG.VOXEL_SIZE - 0.05) / 2;
       const faceData = [
           { n: [0,0,-1] as [number,number,number], v: [[-h,-h,-h],[h,-h,-h],[h,h,-h],[-h,h,-h]] as [number,number,number][] },
@@ -916,7 +919,8 @@ export class VoxelEngine {
       ];
       const positions: number[] = [], normals: number[] = [], colors: number[] = [];
       const skinIndices: number[] = [], skinWeights: number[] = [], indices: number[] = [];
-      this.voxels.forEach(v => {
+      const voxelsToProcess = filter === 'emissive' ? this.voxels.filter(v => v.materialType === VoxelMaterial.EMISSIVE) : filter === 'non-emissive' ? this.voxels.filter(v => v.materialType !== VoxelMaterial.EMISSIVE) : this.voxels;
+      voxelsToProcess.forEach(v => {
           const boneIdx = v.bone !== undefined ? (this.boneIndexMap[v.bone] ?? 0) : 0;
           const col = v.originalColor || v.color;
           const rx = Math.round(v.x), ry = Math.round(v.y), rz = Math.round(v.z);
@@ -951,8 +955,11 @@ export class VoxelEngine {
   public setSolidPreview(enabled: boolean) {
       this.solidPreviewEnabled = enabled;
       if (this.rigGroup) {
-          const skinnedMesh = this.rigGroup.children.find(c => c instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh | undefined;
-          if (skinnedMesh) { const old = skinnedMesh.geometry; skinnedMesh.geometry = this.buildSkinnedGeo(enabled); old.dispose(); }
+          const hasEmissiveVoxels = this.voxels.some(v => v.materialType === VoxelMaterial.EMISSIVE);
+          (this.rigGroup.children.filter(c => c instanceof THREE.SkinnedMesh) as THREE.SkinnedMesh[]).forEach(sm => {
+              const f = hasEmissiveVoxels ? (sm.name === 'skinned_emissive' ? 'emissive' : 'non-emissive') : undefined;
+              const old = sm.geometry; sm.geometry = this.buildSkinnedGeo(enabled, f); old.dispose();
+          });
       } else {
           this.applyDisplayState();
       }
@@ -990,10 +997,49 @@ export class VoxelEngine {
     const colors = new Set<string>(); this.voxels.forEach(v => colors.add('#' + (v.originalColor || v.color).getHexString())); return Array.from(colors);
   }
 
+  private buildStaticEmissiveMesh(): THREE.Mesh {
+      const h = (CONFIG.VOXEL_SIZE - 0.05) / 2;
+      const faceData = [
+          { n: [0,0,-1] as [number,number,number], v: [[-h,-h,-h],[h,-h,-h],[h,h,-h],[-h,h,-h]] as [number,number,number][] },
+          { n: [0,0,1]  as [number,number,number], v: [[h,-h,h],[-h,-h,h],[-h,h,h],[h,h,h]] as [number,number,number][] },
+          { n: [0,-1,0] as [number,number,number], v: [[-h,-h,h],[h,-h,h],[h,-h,-h],[-h,-h,-h]] as [number,number,number][] },
+          { n: [0,1,0]  as [number,number,number], v: [[-h,h,-h],[h,h,-h],[h,h,h],[-h,h,h]] as [number,number,number][] },
+          { n: [-1,0,0] as [number,number,number], v: [[-h,-h,h],[-h,h,h],[-h,h,-h],[-h,-h,-h]] as [number,number,number][] },
+          { n: [1,0,0]  as [number,number,number], v: [[h,-h,-h],[h,h,-h],[h,h,h],[h,-h,h]] as [number,number,number][] },
+      ];
+      const positions: number[] = [], normals: number[] = [], colors: number[] = [], indices: number[] = [];
+      this.voxels.filter(v => v.materialType === VoxelMaterial.EMISSIVE).forEach(v => {
+          const col = v.originalColor || v.color;
+          const rx = Math.round(v.x), ry = Math.round(v.y), rz = Math.round(v.z);
+          faceData.forEach(face => {
+              if (this.voxelMap.has(`${rx+face.n[0]},${ry+face.n[1]},${rz+face.n[2]}`)) return;
+              const base = positions.length / 3;
+              face.v.forEach(([ox,oy,oz]) => { positions.push(v.x+ox, v.y+oy, v.z+oz); normals.push(face.n[0],face.n[1],face.n[2]); colors.push(col.r,col.g,col.b); });
+              indices.push(base,base+1,base+2,base,base+2,base+3);
+          });
+      });
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+      geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+      geo.setIndex(indices);
+      return new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, emissive: new THREE.Color(1, 1, 1), emissiveIntensity: 1 }));
+  }
+
   public async exportGLTF(includeAnimations: boolean = true) {
     const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
     const exporter = new GLTFExporter();
-    let exportGroup = this.rigGroup || this.generateOptimizedMesh();
+    let exportGroup: THREE.Object3D;
+    if (this.rigGroup) {
+        exportGroup = this.rigGroup;
+    } else if (this.voxels.some(v => v.materialType === VoxelMaterial.EMISSIVE)) {
+        const group = new THREE.Group();
+        group.add(this.generateOptimizedMesh());
+        group.add(this.buildStaticEmissiveMesh());
+        exportGroup = group;
+    } else {
+        exportGroup = this.generateOptimizedMesh();
+    }
     let animations: THREE.AnimationClip[] = [];
     if (includeAnimations && this.currentSkeleton && this.rigGroup) {
         this.currentSkeleton.animations.forEach(animDef => {
@@ -1523,10 +1569,19 @@ export class VoxelEngine {
     this.boneIndexMap = boneIndexMap;
 
     this.rigSkeleton = new THREE.Skeleton(allBones);
-    const geo = this.buildSkinnedGeo(this.solidPreviewEnabled);
+    const hasEmissiveVoxels = this.voxels.some(v => v.materialType === VoxelMaterial.EMISSIVE);
+    const geo = this.buildSkinnedGeo(this.solidPreviewEnabled, hasEmissiveVoxels ? 'non-emissive' : undefined);
     const skinnedMesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide }));
+    skinnedMesh.name = 'skinned_standard';
     skinnedMesh.bind(this.rigSkeleton);
     this.rigGroup.add(skinnedMesh);
+    if (hasEmissiveVoxels) {
+        const emissiveGeo = this.buildSkinnedGeo(this.solidPreviewEnabled, 'emissive');
+        const emissiveSkinnedMesh = new THREE.SkinnedMesh(emissiveGeo, new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, emissive: new THREE.Color(1, 1, 1), emissiveIntensity: 1 }));
+        emissiveSkinnedMesh.name = 'skinned_emissive';
+        emissiveSkinnedMesh.bind(this.rigSkeleton);
+        this.rigGroup.add(emissiveSkinnedMesh);
+    }
 
     this.applyDisplayState();
   }
