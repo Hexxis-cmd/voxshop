@@ -27,7 +27,7 @@ This launches the bridge server (port 4269) and the Vite dev server (port 3000).
 
 ## Connecting AI
 
-### Option A — CLI Worker (Free, any agent)
+### Option A — CLI Worker (Free for students with gemini pro, any agent/or model)
 
 Works with Gemini CLI, Claude Code, or any CLI tool that reads/writes files.
 
