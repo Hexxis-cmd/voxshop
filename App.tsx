@@ -744,6 +744,7 @@ const App: React.FC = () => {
               onShowJson={handleShowJson}
               onImportJson={handleImportClick}
               onExportGLTF={() => handleExportGLTF(false)}
+              onExportGLTFStatic={() => handleExportGLTF(false)}
               onExportOBJ={handleExportOBJ}
               onExportFBX={() => handleExportGLTF(true)}
               onExportPLY={() => engineRef.current?.exportPLY()}
@@ -800,17 +801,6 @@ const App: React.FC = () => {
                     engineRef.current?.exitAnimationPreview();
                 }}
                 onExplodeRig={() => engineRef.current?.explodeFromRig()}
-                onExportGLTF={() => handleExportGLTF(true)}
-                onExportGLTFStatic={() => handleExportGLTF(false)}
-                onExportOBJ={handleExportOBJ}
-                onExportPLY={() => engineRef.current?.exportPLY()}
-                onExportSTL={() => engineRef.current?.exportSTL()}
-                onExportFBX={() => handleExportGLTF(true)}
-                onExportVOX={() => engineRef.current?.exportVOX()}
-                onExportQB={() => engineRef.current?.exportQB()}
-                onExportPNG={() => engineRef.current?.exportPNG()}
-                onExportMinecraft={(fmt) => engineRef.current?.exportMinecraft(fmt)}
-                onExportJSON={handleShowJson}
               />
               )}
 

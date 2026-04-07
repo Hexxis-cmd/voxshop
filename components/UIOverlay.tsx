@@ -165,6 +165,7 @@ interface UIOverlayProps {
   onShowJson: () => void;
   onImportJson: () => void;
   onExportGLTF: () => void;
+  onExportGLTFStatic: () => void;
   onExportOBJ: () => void;
   onExportFBX: () => void;
   onExportPLY: () => void;
@@ -233,6 +234,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   onShowJson,
   onImportJson,
   onExportGLTF,
+  onExportGLTFStatic,
   onExportOBJ,
   onExportFBX,
   onExportPLY,
@@ -442,6 +444,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
             <DropdownMenu icon={<Download size={18} />} label="EXPORT" color="dark" align="right">
                 <DropdownItem onClick={onExportGLTF} icon={<Box size={16}/>} label="Game-Ready (.glb)" highlight />
                 <DropdownItem onClick={onExportFBX} icon={<Box size={16}/>} label="3D Animation (.glb)" />
+                <DropdownItem onClick={onExportGLTFStatic} icon={<Box size={16}/>} label="Rigged Only (.glb)" />
                 <DropdownItem onClick={onExportOBJ} icon={<Box size={16}/>} label="Static Mesh (.obj)" />
                 <DropdownItem onClick={onExportPLY} icon={<Box size={16}/>} label="Point Cloud (.ply)" />
                 <DropdownItem onClick={onExportSTL} icon={<Box size={16}/>} label="3D Printing (.stl)" />

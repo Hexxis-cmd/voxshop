@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { SkeletonDef, SKELETONS } from '../utils/riggingConstants';
-import { X, Paintbrush, Play, Square, Download, ChevronRight, Wand2, Box, FileCode, Image, Hammer, Zap } from 'lucide-react';
+import { X, Paintbrush, Play, Square, ChevronRight, Wand2, Hammer, Zap } from 'lucide-react';
 
 const SectionLabel: React.FC<{icon: React.ReactNode, label: string}> = ({ icon, label }) => (
     <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
@@ -13,15 +13,6 @@ const CpuIcon = ({ size }: { size: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
 );
 
-const ExportButton: React.FC<{onClick: () => void, icon: React.ReactNode, label: string, sub: string}> = ({ onClick, icon, label, sub }) => (
-    <button onClick={onClick} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left group">
-        <div className="p-2 rounded-lg bg-slate-800 text-slate-400 group-hover:text-blue-400 transition-colors">{icon}</div>
-        <div className="flex flex-col">
-            <span className="text-[10px] font-black text-white uppercase tracking-tighter">{label}</span>
-            <span className="text-[8px] font-bold text-slate-500 uppercase tracking-widest">{sub}</span>
-        </div>
-    </button>
-);
 
 interface RiggingOverlayProps {
     initialSkeleton: SkeletonDef | null;
@@ -34,17 +25,6 @@ interface RiggingOverlayProps {
     onPlayAnimation: (skeleton: SkeletonDef, animName: string, loop: boolean) => void;
     onStopAnimation: () => void;
     onExplodeRig: () => void;
-    onExportGLTF: () => void;
-    onExportGLTFStatic: () => void;
-    onExportOBJ: () => void;
-    onExportPLY: () => void;
-    onExportSTL: () => void;
-    onExportFBX: () => void;
-    onExportVOX: () => void;
-    onExportQB: () => void;
-    onExportPNG: () => void;
-    onExportMinecraft: (format: 'nbt' | 'schematic' | 'litematic') => void;
-    onExportJSON: () => void;
 }
 
 export const RiggingOverlay: React.FC<RiggingOverlayProps> = ({
@@ -58,17 +38,6 @@ export const RiggingOverlay: React.FC<RiggingOverlayProps> = ({
     onPlayAnimation,
     onStopAnimation,
     onExplodeRig,
-    onExportGLTF,
-    onExportGLTFStatic,
-    onExportOBJ,
-    onExportPLY,
-    onExportSTL,
-    onExportFBX,
-    onExportVOX,
-    onExportQB,
-    onExportPNG,
-    onExportMinecraft,
-    onExportJSON
 }) => {
     const [selectedSkeleton, setSelectedSkeleton] = useState<SkeletonDef>(initialSkeleton || SKELETONS[0]);
     const [activeBone, setActiveBone] = useState<string | null>(null);
@@ -199,27 +168,6 @@ export const RiggingOverlay: React.FC<RiggingOverlayProps> = ({
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-3">
-                    <SectionLabel icon={<Download size={12} />} label="Universal Export" />
-                    <div className="grid grid-cols-1 gap-2">
-                        <ExportButton onClick={onExportGLTF} icon={<Box size={18}/>} label="Rigged + Anims" sub=".GLB" />
-                        <ExportButton onClick={onExportGLTFStatic} icon={<Box size={18}/>} label="Rigged Only" sub=".GLB" />
-                        <ExportButton onClick={onExportOBJ} icon={<Box size={18}/>} label="Static Mesh" sub=".OBJ" />
-                        <ExportButton onClick={onExportPLY} icon={<Box size={18}/>} label="Point Cloud" sub=".PLY" />
-                        <ExportButton onClick={onExportSTL} icon={<Box size={18}/>} label="3D Printing" sub=".STL" />
-                        <ExportButton onClick={onExportFBX} icon={<Box size={18}/>} label="3D Animation" sub=".GLB" />
-                        <ExportButton onClick={onExportVOX} icon={<FileCode size={18}/>} label="MagicaVoxel" sub=".VOX" />
-                        <ExportButton onClick={onExportQB} icon={<FileCode size={18}/>} label="Qubicle Asset" sub=".QB" />
-                        <ExportButton onClick={onExportPNG} icon={<Image size={18}/>} label="2D Snapshot" sub=".PNG" />
-                        <div className="h-px bg-white/5 my-1" />
-                        <div className="grid grid-cols-3 gap-2">
-                            <button onClick={() => onExportMinecraft('nbt')} className="py-2 rounded-lg bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 font-black text-[8px] uppercase hover:bg-emerald-900/40">.NBT</button>
-                            <button onClick={() => onExportMinecraft('schematic')} className="py-2 rounded-lg bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 font-black text-[8px] uppercase hover:bg-emerald-900/40">.SCHEM</button>
-                            <button onClick={() => onExportMinecraft('litematic')} className="py-2 rounded-lg bg-emerald-900/20 border border-emerald-500/20 text-emerald-400 font-black text-[8px] uppercase hover:bg-emerald-900/40">.LITE</button>
-                        </div>
-                        <ExportButton onClick={onExportJSON} icon={<FileCode size={18}/>} label="Workstation Data" sub=".JSON" />
-                    </div>
-                </div>
 
             </div>
 
