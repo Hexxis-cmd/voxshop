@@ -1,16 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { SkeletonDef, SKELETONS } from '../utils/riggingConstants';
-import { X, Paintbrush, Play, Square, ChevronRight, Wand2, Hammer, Zap } from 'lucide-react';
+import { X, Paintbrush, Play, Square, ChevronRight, Wand2, Hammer, Zap, Cpu } from 'lucide-react';
 
 const SectionLabel: React.FC<{icon: React.ReactNode, label: string}> = ({ icon, label }) => (
     <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
         <span className="text-blue-500/50">{icon}</span>
         {label}
     </div>
-);
-
-const CpuIcon = ({ size }: { size: number }) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
 );
 
 
@@ -100,7 +96,7 @@ export const RiggingOverlay: React.FC<RiggingOverlayProps> = ({
                 </div>
 
                 <div className="flex flex-col gap-3">
-                    <SectionLabel icon={<CpuIcon size={12} />} label="Automation" />
+                    <SectionLabel icon={<Cpu size={12} />} label="Automation" />
                     <button 
                         onClick={() => onAutoRig(selectedSkeleton)}
                         className="w-full py-3 rounded-xl font-black text-[10px] uppercase tracking-[0.2em] text-white bg-blue-600 hover:bg-blue-500 transition-all shadow-lg shadow-blue-900/20"

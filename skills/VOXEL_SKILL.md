@@ -10,7 +10,7 @@ This skill works with any AI CLI: Claude Code, Gemini CLI, GitHub Copilot, local
 ## Non-Negotiable Output Rules
 
 1. **RAW JSON ONLY.** Your response file `_bridge/response.json` must be a pure JSON array. It must start with `[` and end with `]`. No markdown fences, no code blocks, no text before or after, no comments inside the JSON.
-2. **NO CODE.** Do not write Python, JavaScript, or any script to generate voxels. Compute all spatial positions in your own reasoning and output the final array directly.
+2. **NO CODE. NO SCRIPTS. EVER.** Do not write, create, or execute any `.cjs`, `.js`, `.py`, or any other script file — not in the root, not anywhere. Do not use scripts as an intermediate step. Compute all voxel positions in your own reasoning and write the final JSON array directly to `_bridge/response.json`. If you create a script file instead of writing JSON directly, you have failed this task.
 3. **RESPECT LOCKS.** Never modify, move, or remove voxels where `"isLocked": true` appears in the input grid.
 4. **NO FLOATING VOXELS.** Every voxel must be part of a connected solid. No isolated cubes hanging in space unless the subject itself floats (e.g., a ghost, a levitating crystal).
 5. **NEVER FLAT COLOR.** Every model must use color gradients — minimum 3 distinct shades per major surface zone. A single hex value used for every voxel is always wrong.

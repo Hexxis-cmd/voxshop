@@ -7,7 +7,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { createNoise2D, createNoise3D } from 'simplex-noise';
 import { AppState, SimulationVoxel, RebuildTarget, VoxelData, VoxelDelta, ChangeLogEntry, VoxelMaterial, VoxelWeight, SceneObject } from '../types';
-import { CONFIG, COLORS } from '../utils/voxelConstants';
+import { CONFIG } from '../utils/voxelConstants';
 import { SkeletonDef, SKELETONS } from '../utils/riggingConstants';
 
 export class VoxelEngine {
@@ -73,8 +73,6 @@ export class VoxelEngine {
   private bakedAOStrength = 0.5;
   private solidPreviewEnabled = false;
   private solidPreviewMesh: THREE.Mesh | null = null;
-  private smoothPreviewEnabled = false;
-  private marchingCubesObject: THREE.Mesh | null = null;
   private boneIndexMap: Record<string, number> = {};
 
   constructor(
@@ -773,52 +771,6 @@ export class VoxelEngine {
       else { this.renderer.toneMapping = THREE.ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.1; }
   }
 
-  public setSmoothPreview(enabled: boolean) {
-      this.smoothPreviewEnabled = enabled;
-      this.applyDisplayState();
-  }
-
-  private buildMarchingCubes() {
-      this.disposeSmoothPreview();
-      if (!this.voxels.length) return;
-      const baseMesh = this.generateOptimizedMesh();
-      const geo = baseMesh.geometry;
-      const posAttr = geo.attributes.position;
-      const indexAttr = geo.index;
-      if (indexAttr) {
-          const vertCount = posAttr.count;
-          const neighbors: Set<number>[] = Array.from({ length: vertCount }, () => new Set<number>());
-          for (let i = 0; i < indexAttr.count; i += 3) {
-              const a = indexAttr.getX(i), b = indexAttr.getX(i + 1), c = indexAttr.getX(i + 2);
-              neighbors[a].add(b); neighbors[a].add(c);
-              neighbors[b].add(a); neighbors[b].add(c);
-              neighbors[c].add(a); neighbors[c].add(b);
-          }
-          const pos = new Float32Array(posAttr.array as ArrayLike<number>);
-          const tmp = new Float32Array(pos.length);
-          for (let iter = 0; iter < 5; iter++) {
-              for (let v = 0; v < vertCount; v++) {
-                  const ns = neighbors[v];
-                  if (ns.size === 0) { tmp[v*3]=pos[v*3]; tmp[v*3+1]=pos[v*3+1]; tmp[v*3+2]=pos[v*3+2]; continue; }
-                  let ax = 0, ay = 0, az = 0;
-                  ns.forEach(n => { ax += pos[n*3]; ay += pos[n*3+1]; az += pos[n*3+2]; });
-                  const inv = 1 / ns.size;
-                  tmp[v*3]   = pos[v*3]   + 0.5 * (ax * inv - pos[v*3]);
-                  tmp[v*3+1] = pos[v*3+1] + 0.5 * (ay * inv - pos[v*3+1]);
-                  tmp[v*3+2] = pos[v*3+2] + 0.5 * (az * inv - pos[v*3+2]);
-              }
-              pos.set(tmp);
-          }
-          geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-          geo.computeVertexNormals();
-          geo.computeBoundingSphere();
-          geo.computeBoundingBox();
-      }
-      baseMesh.castShadow = true;
-      baseMesh.receiveShadow = true;
-      this.scene.add(baseMesh);
-      this.marchingCubesObject = baseMesh;
-  }
 
   public generateSphere(radius: number = 8) {
       const voxels: VoxelData[] = [];
@@ -886,23 +838,15 @@ export class VoxelEngine {
   private disposeSolidPreview() {
       if (this.solidPreviewMesh) { this.scene.remove(this.solidPreviewMesh); this.solidPreviewMesh.geometry.dispose(); (this.solidPreviewMesh.material as THREE.Material).dispose(); this.solidPreviewMesh = null; }
   }
-  private disposeSmoothPreview() {
-      if (this.marchingCubesObject) { this.scene.remove(this.marchingCubesObject); this.marchingCubesObject.geometry.dispose(); (this.marchingCubesObject.material as THREE.Material).dispose(); this.marchingCubesObject = null; }
-  }
   private applyDisplayState() {
       if (this.rigGroup) {
-          this.disposeSolidPreview(); this.disposeSmoothPreview();
-          this.getAllMeshes().forEach(m => m.visible = false);
-      } else if (this.smoothPreviewEnabled) {
           this.disposeSolidPreview();
-          if (!this.marchingCubesObject) this.buildMarchingCubes();
           this.getAllMeshes().forEach(m => m.visible = false);
       } else if (this.solidPreviewEnabled) {
-          this.disposeSmoothPreview();
           this.refreshSolidPreview();
           this.getAllMeshes().forEach(m => m.visible = false);
       } else {
-          this.disposeSolidPreview(); this.disposeSmoothPreview();
+          this.disposeSolidPreview();
           this.getAllMeshes().forEach(m => m.visible = true);
       }
   }
