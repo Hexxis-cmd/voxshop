@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AppState, SavedModel, SceneObject } from '../types';
-import { Box, Wand2, Hammer, FolderOpen, ChevronUp, FileJson, FileCode, History, Play, Pause, Wrench, Loader2, Download, Save, Trees, X, Settings2, Image as ImageIcon, Type, Cpu, Code2, Grid3X3, RotateCcw, Crosshair, MapPin, Trash2, ChevronLeft, ChevronRight, ChevronDown, PlusSquare, Pencil, Layers } from 'lucide-react';
+import { Box, Wand2, Hammer, FolderOpen, ChevronUp, FileJson, FileCode, History, Play, Pause, Wrench, Loader2, Download, Save, FolderDown, Trees, X, Settings2, Image as ImageIcon, Type, Cpu, Code2, Grid3X3, RotateCcw, Crosshair, MapPin, Trash2, ChevronLeft, ChevronRight, ChevronDown, PlusSquare, Pencil, Layers } from 'lucide-react';
 
 const VerticalToolButton: React.FC<{onClick: () => void, active: boolean, disabled: boolean, icon: React.ReactNode, label: string, color: 'blue' | 'amber' | 'rose'}> = ({ onClick, disabled, icon, label, color }) => {
     const colorMap = {
@@ -143,6 +143,7 @@ interface UIOverlayProps {
   voxelCount: number;
   appState: AppState;
   currentBaseModel: string;
+  presets: SavedModel[];
   customBuilds: SavedModel[];
   customRebuilds: SavedModel[];
   isAutoRotate: boolean;
@@ -159,6 +160,7 @@ interface UIOverlayProps {
   onDeleteCustomBuild: (model: SavedModel) => void;
   onDeleteCustomRebuild: (model: SavedModel) => void;
   onSaveBuild: () => void;
+  onSaveAsTemplate: () => void;
   onPromptCreate: () => void;
   onPromptMorph: () => void;
   onPromptRebuild: () => void;
@@ -212,6 +214,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   voxelCount,
   appState,
   currentBaseModel,
+  presets,
   customBuilds,
   customRebuilds,
   isAutoRotate,
@@ -228,6 +231,7 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   onDeleteCustomBuild,
   onDeleteCustomRebuild,
   onSaveBuild,
+  onSaveAsTemplate,
   onPromptCreate,
   onPromptMorph,
   onPromptRebuild,
@@ -342,6 +346,24 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                     <DropdownItem onClick={() => plyInputRef.current?.click()} icon={<Box size={16}/>} label="Point Cloud PLY (.ply)" />
                     <DropdownItem onClick={() => fbxInputRef.current?.click()} icon={<Box size={16}/>} label="3D Animation FBX (.fbx)" />
 
+                    {presets.length > 0 && (
+                        <>
+                            <div className="h-px bg-white/5 my-1" />
+                            <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Templates</div>
+                            {presets.map((model, idx) => (
+                                <div key={`preset-${idx}`} className="flex items-center gap-1 px-2 py-1 hover:bg-white/5 rounded-lg group">
+                                    <button
+                                        onClick={() => onSelectCustomBuild(model)}
+                                        className="flex-1 flex items-center gap-2 text-left"
+                                    >
+                                        <Box size={14} className="text-blue-500/60 shrink-0" />
+                                        <span className="text-xs text-slate-300 truncate max-w-[120px]">{model.name}</span>
+                                    </button>
+                                </div>
+                            ))}
+                        </>
+                    )}
+
                     {customBuilds.length > 0 && (
                         <>
                             <div className="h-px bg-white/5 my-1" />
@@ -390,6 +412,13 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                     icon={<Save size={18} />}
                     label="Save"
                     title="Save current workstation state"
+                />
+                <TactileButton
+                    onClick={onSaveAsTemplate}
+                    color="dark"
+                    icon={<FolderDown size={18} />}
+                    label="Template"
+                    title="Save as a template preset for all users"
                 />
             </div>
 

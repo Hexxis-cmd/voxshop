@@ -933,6 +933,17 @@ export class VoxelEngine {
 
   public setAutoRotate(enabled: boolean) { if (this.controls) this.controls.autoRotate = enabled; }
 
+  public getVoxelDataForSave(): VoxelData[] {
+      return this.voxels.map(v => ({
+          x: Math.round(v.x), y: Math.round(v.y), z: Math.round(v.z),
+          color: (v.originalColor || v.color).getHex(),
+          ...(v.materialType !== VoxelMaterial.STANDARD && { materialType: v.materialType }),
+          ...(v.bone && { bone: v.bone }),
+          ...(v.weights && v.weights.length > 0 && { weights: v.weights }),
+          ...(v.isLocked && { isLocked: true }),
+      }));
+  }
+
   public getJsonData(): string {
       return JSON.stringify(this.voxels.map((v, i) => ({ id: i, x: +v.x.toFixed(2), y: +v.y.toFixed(2), z: +v.z.toFixed(2), c: '#' + v.color.getHexString() })), null, 2);
   }

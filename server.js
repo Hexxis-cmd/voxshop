@@ -108,6 +108,27 @@ app.post('/api/proxy', async (req, res) => {
     }
 });
 
+const PRESETS_DIR = path.join(process.cwd(), 'presets');
+if (!fs.existsSync(PRESETS_DIR)) fs.mkdirSync(PRESETS_DIR);
+
+app.get('/api/presets', (req, res) => {
+    const files = fs.readdirSync(PRESETS_DIR).filter(f => f.endsWith('.json'));
+    const presets = files.map(f => {
+        try { return JSON.parse(fs.readFileSync(path.join(PRESETS_DIR, f), 'utf8')); }
+        catch { return null; }
+    }).filter(Boolean);
+    res.json(presets);
+});
+
+app.post('/api/presets', (req, res) => {
+    const { name, data } = req.body;
+    if (!name || !data) return res.status(400).json({ error: 'Missing name or data' });
+    const filename = name.replace(/[^a-z0-9_\-]/gi, '_').toLowerCase() + '.json';
+    fs.writeFileSync(path.join(PRESETS_DIR, filename), JSON.stringify({ name, data }, null, 2));
+    console.log(`Preset saved: ${filename} (${data.length} voxels)`);
+    res.json({ ok: true, file: filename });
+});
+
 app.listen(PORT, () => {
   console.log(`Voxel Builder Bridge Server running on http://localhost:${PORT}`);
   console.log(`Bridge Folder: ${BRIDGE_DIR}`);

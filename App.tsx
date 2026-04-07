@@ -44,6 +44,7 @@ const App: React.FC = () => {
   const [currentMaterial, setCurrentMaterial] = useState<VoxelMaterial>(VoxelMaterial.STANDARD);
 
   const [currentBaseModel, setCurrentBaseModel] = useState<string>('RedFox');
+  const [presets, setPresets] = useState<SavedModel[]>([]);
   const [customBuilds, setCustomBuilds] = useState<SavedModel[]>(() => {
     try { const s = localStorage.getItem('voxelBuilderCustomBuilds'); return s ? JSON.parse(s) : []; }
     catch { return []; }
@@ -119,6 +120,11 @@ const App: React.FC = () => {
         objs.forEach(obj => engine.placeInScene(obj));
       } catch { /* ignore */ }
     }
+
+    fetch('http://localhost:4269/api/presets')
+      .then(r => r.json())
+      .then(data => { if (Array.isArray(data)) setPresets(data); })
+      .catch(() => {});
 
     const handleResize = () => engine.handleResize();
     window.addEventListener('resize', handleResize);
@@ -234,6 +240,27 @@ const App: React.FC = () => {
               setCustomBuilds(prev => [...prev, { name, data }]);
           }
       }
+  };
+
+  const handleSaveAsTemplate = () => {
+      if (!engineRef.current) return;
+      const name = prompt("Template name:", currentBaseModel);
+      if (!name) return;
+      const data = engineRef.current.getVoxelDataForSave();
+      fetch('http://localhost:4269/api/presets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, data }),
+      })
+      .then(r => r.json())
+      .then(() => {
+          setPresets(prev => {
+              const filtered = prev.filter(p => p.name !== name);
+              return [...filtered, { name, data }];
+          });
+          alert(`Template "${name}" saved to presets folder.`);
+      })
+      .catch(() => alert('Failed to save template — is the bridge server running?'));
   };
 
   const handleShowJson = () => {
@@ -722,6 +749,7 @@ const App: React.FC = () => {
               voxelCount={voxelCount}
               appState={appState}
               currentBaseModel={currentBaseModel}
+              presets={presets}
               customBuilds={customBuilds}
               customRebuilds={relevantRebuilds}
               isAutoRotate={isAutoRotate}
@@ -738,6 +766,7 @@ const App: React.FC = () => {
               onDeleteCustomBuild={handleDeleteCustomBuild}
               onDeleteCustomRebuild={handleDeleteCustomRebuild}
               onSaveBuild={handleSaveBuild}
+              onSaveAsTemplate={handleSaveAsTemplate}
               onPromptCreate={() => openPrompt('create')}
               onPromptMorph={() => openPrompt('morph')}
               onPromptRebuild={() => openPrompt('rebuild')}
