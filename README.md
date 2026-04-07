@@ -2,7 +2,7 @@
 
 An AI-powered 3D voxel workshop. Generate, sculpt, animate, and export voxel models using any AI engine — CLI agents, direct API keys, or fully offline with local models. No subscription required.
 
-[![Support on PayPal](https://img.shields.io/badge/Support-PayPal-blue?style=for-the-badge&logo=paypal)](https://paypal.me/Daysextremities?country.x=US&locale.x=en_US)
+[![Support on PayPal](https://img.shields.io/badge/Support-PayPal-blue?style=for-the-badge&logo=paypal)](https://www.paypal.com/ncp/payment/MNF5JL9WPEJ92)
 
 ---
 
@@ -259,11 +259,11 @@ All mesh imports prompt for a voxel resolution before converting.
 
 ## Developer
 
-Built by **[Hexxis-Cmd](https://github.com/Hexxis-cmd)**.
+Built by **[Hexxis-Cmd](https://github.com/Hexxis-cmd/voxshop)**.
 
 VoxShop is free and open. If it's useful to you, consider supporting development:
 
-[![Support on PayPal](https://img.shields.io/badge/Support-PayPal-blue?style=for-the-badge&logo=paypal)](https://paypal.me/Daysextremities?country.x=US&locale.x=en_US)
+[![Support on PayPal](https://img.shields.io/badge/Support-PayPal-blue?style=for-the-badge&logo=paypal)](https://www.paypal.com/ncp/payment/MNF5JL9WPEJ92)
 
 ---
 

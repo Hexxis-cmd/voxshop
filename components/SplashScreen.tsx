@@ -50,7 +50,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
 
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, borderTop: '1px solid rgba(255,255,255,0.05)', padding: '16px 32px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
         <a
-          href="https://paypal.me/Daysextremities?country.x=US&locale.x=en_US"
+          href="https://www.paypal.com/ncp/payment/MNF5JL9WPEJ92"
           target="_blank"
           rel="noopener noreferrer"
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'rgba(0,48,135,0.2)', border: '1px solid rgba(0,48,135,0.3)', borderRadius: 10, color: '#60a5fa', fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}
@@ -60,7 +60,7 @@ export const SplashScreen: React.FC<SplashScreenProps> = ({ onEnter }) => {
         </a>
 
         <a
-          href="https://github.com/Hexxis-cmd"
+          href="https://github.com/Hexxis-cmd/voxshop"
           target="_blank"
           rel="noopener noreferrer"
           style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 20px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, color: '#94a3b8', fontSize: 11, fontWeight: 700, letterSpacing: '0.15em', textTransform: 'uppercase', textDecoration: 'none', cursor: 'pointer' }}
