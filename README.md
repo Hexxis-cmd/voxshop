@@ -38,12 +38,15 @@ Open a terminal in the project folder:
 **Gemini CLI:**
 ```
 gemini --yolo
-> Tell gemini to Activate the skill in ./skills/VOXEL_SKILL.md, flash models work, but pro will give better results. (Gemini is offering a year for pro for free to students, i highly recommend checking that out)
+> Activate the skill in ./skills/VOXEL_SKILL.md
+```
+Flash models work, but pro will give better results. (Gemini is offering a year for pro for free to students, i highly recommend checking that out)
 
 **Claude Code:**
 ```
 claude
 > Activate the skill in ./skills/VOXEL_SKILL.md
+```
 
 P.S. CLI wont hang indefinitely so you will need to tell it to check for requests as you make them, this is tedious but its a work around if you do not have api key but do have pro access in your terminals. enjoy. :)
 ---

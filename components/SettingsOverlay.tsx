@@ -102,7 +102,6 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClos
                       <p>1. Right-click the project folder → <span className="text-white/60">Open in Terminal</span></p>
                       <p>2. Start your AI CLI: <span className="text-white/60">claude</span>, <span className="text-white/60">gemini --yolo</span>, copilot, etc.</p>
                       <p>3. Tell it: <span className="text-white/60">"Activate the skill in ./skills/VOXEL_SKILL.md"</span></p>
-                      <p>4. Then: <span className="text-white/60">"Watch _bridge/ — write responses to response.json"</span></p>
                     </div>
                   </div>
                 </div>
