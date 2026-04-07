@@ -10,7 +10,6 @@ import { SettingsOverlay } from './components/SettingsOverlay';
 import { RenderSettingsOverlay, RenderSettings, DEFAULT_RENDER_SETTINGS } from './components/RenderSettingsOverlay';
 import { SplashScreen } from './components/SplashScreen';
 import { AppState, VoxelData, SymmetryConfig, SavedModel, DetailLevel, Pose, VoxelMaterial, SceneObject } from './types';
-import { Generators } from './utils/voxelGenerators';
 import { SKELETONS } from './utils/riggingConstants';
 
 const App: React.FC = () => {
@@ -43,7 +42,7 @@ const App: React.FC = () => {
   const [brushSize, setBrushSize] = useState<number>(1);
   const [currentMaterial, setCurrentMaterial] = useState<VoxelMaterial>(VoxelMaterial.STANDARD);
 
-  const [currentBaseModel, setCurrentBaseModel] = useState<string>('RedFox');
+  const [currentBaseModel, setCurrentBaseModel] = useState<string>('My Model');
   const [presets, setPresets] = useState<SavedModel[]>([]);
   const [customBuilds, setCustomBuilds] = useState<SavedModel[]>(() => {
     try { const s = localStorage.getItem('voxelBuilderCustomBuilds'); return s ? JSON.parse(s) : []; }
@@ -102,7 +101,6 @@ const App: React.FC = () => {
 
     engineRef.current = engine;
 
-    engine.loadInitialModel(Generators.RedFox());
 
     const savedSettings = localStorage.getItem('voxelBuilderSettings');
     if (savedSettings) {
@@ -141,22 +139,6 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('voxelBuilderAutoRotate', JSON.stringify(isAutoRotate)); }, [isAutoRotate]);
   useEffect(() => { localStorage.setItem('voxelBuilderShowGrid', JSON.stringify(showGrid)); }, [showGrid]);
   useEffect(() => { localStorage.setItem('voxelBuilderSceneObjects', JSON.stringify(sceneObjects)); }, [sceneObjects]);
-
-  const handleRebuild = (type: 'RedFox' | 'Deer') => {
-    if (engineRef.current) {
-      const generator = type === 'RedFox' ? Generators.RedFox : Generators.Deer;
-      engineRef.current.rebuild(generator());
-      setCurrentBaseModel(type);
-    }
-  };
-
-  const handleNewScene = (type: 'RedFox') => {
-    if (engineRef.current) {
-      const generator = Generators.RedFox;
-      engineRef.current.loadInitialModel(generator());
-      setCurrentBaseModel('RedFox');
-    }
-  };
 
   const handleNewEmptyScene = () => {
     engineRef.current?.loadInitialModel([]);
@@ -757,8 +739,6 @@ const App: React.FC = () => {
               isGenerating={isGenerating}
               hasSnapshot={engineRef.current?.hasSnapshot || false}
               onDismantle={handleDismantle}
-              onRebuild={handleRebuild}
-              onNewScene={handleNewScene}
               onNewEmptyScene={handleNewEmptyScene}
               onRenameBuild={handleRenameBuild}
               onSelectCustomBuild={handleSelectCustomBuild}

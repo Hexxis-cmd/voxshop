@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AppState, SavedModel, SceneObject } from '../types';
-import { Box, Wand2, Hammer, FolderOpen, ChevronUp, FileJson, FileCode, History, Play, Pause, Wrench, Loader2, Download, Save, FolderDown, Trees, X, Settings2, Image as ImageIcon, Type, Cpu, Code2, Grid3X3, RotateCcw, Crosshair, MapPin, Trash2, ChevronLeft, ChevronRight, ChevronDown, PlusSquare, Pencil, Layers } from 'lucide-react';
+import { Box, Wand2, Hammer, FolderOpen, ChevronUp, FileJson, FileCode, History, Play, Pause, Wrench, Loader2, Download, Save, FolderDown, X, Settings2, Image as ImageIcon, Type, Cpu, Code2, Grid3X3, RotateCcw, Crosshair, MapPin, Trash2, ChevronLeft, ChevronRight, ChevronDown, PlusSquare, Pencil, Layers } from 'lucide-react';
 
 const VerticalToolButton: React.FC<{onClick: () => void, active: boolean, disabled: boolean, icon: React.ReactNode, label: string, color: 'blue' | 'amber' | 'rose'}> = ({ onClick, disabled, icon, label, color }) => {
     const colorMap = {
@@ -151,8 +151,6 @@ interface UIOverlayProps {
   isGenerating: boolean;
   hasSnapshot: boolean;
   onDismantle: () => void;
-  onRebuild: (type: 'RedFox' | 'Deer') => void;
-  onNewScene: (type: 'RedFox') => void;
   onNewEmptyScene: () => void;
   onRenameBuild: (model: SavedModel) => void;
   onSelectCustomBuild: (model: SavedModel) => void;
@@ -222,8 +220,6 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
   isGenerating,
   hasSnapshot,
   onDismantle,
-  onRebuild,
-  onNewScene,
   onNewEmptyScene,
   onRenameBuild,
   onSelectCustomBuild,
@@ -297,8 +293,6 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
     }
   }, [isGenerating]);
   
-  const isRedFox = currentBaseModel === 'RedFox';
-
   return (
     <div className="absolute inset-0 pointer-events-none select-none flex flex-col font-sans">
       
@@ -312,7 +306,6 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                 >
                     <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Asset Pipeline</div>
                     <DropdownItem onClick={onNewEmptyScene} icon={<PlusSquare size={16}/>} label="New Empty Scene" />
-                    <DropdownItem onClick={() => onNewScene('RedFox')} icon={<Box size={16}/>} label="Load Fox Template" />
                     <DropdownItem onClick={onPromptCreate} icon={<Wand2 size={16}/>} label="AI Generation" highlight />
                     <div className="h-px bg-white/5 my-1" />
 
@@ -637,8 +630,6 @@ export const UIOverlay: React.FC<UIOverlayProps> = ({
                         direction="up"
                      >
                         <div className="px-3 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Geometry Reconstruction</div>
-                        {isRedFox && <DropdownItem onClick={() => onRebuild('Deer')} icon={<Trees size={18}/>} label="Rebuild as Deer" />}
-                        
                         {customRebuilds.length > 0 && (
                             <>
                                 <div className="h-px bg-white/5 my-1" />
