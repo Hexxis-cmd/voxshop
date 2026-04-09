@@ -6,11 +6,30 @@ import { EditingOverlay } from './components/EditingOverlay';
 import { PromptModal } from './components/PromptModal';
 import { JsonModal } from './components/JsonModal';
 
-import { SettingsOverlay } from './components/SettingsOverlay';
+import { SettingsOverlay, type SettingsData } from './components/SettingsOverlay';
 import { RenderSettingsOverlay, RenderSettings, DEFAULT_RENDER_SETTINGS } from './components/RenderSettingsOverlay';
 import { SplashScreen } from './components/SplashScreen';
+import { DiagnosticsPanel } from './components/DiagnosticsPanel';
+import { DiagnosticLogEntry, logger, normalizeExternalLog } from './services/logger';
 import { AppState, VoxelData, SymmetryConfig, SavedModel, DetailLevel, Pose, VoxelMaterial, SceneObject } from './types';
 import { SKELETONS } from './utils/riggingConstants';
+
+const APP_VERSION = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '0.0.0';
+const getErrorMessage = (error: unknown, fallback = 'Something went wrong'): string =>
+  error instanceof Error ? error.message : fallback;
+
+const DEFAULT_SETTINGS: SettingsData = {
+  apiType: 'proxy',
+  apiKey: '',
+  localUrl: 'http://localhost:4269/api/generate',
+  apiEndpoint: 'https://api.openai.com/v1/chat/completions',
+  modelName: 'gpt-4o',
+  backgroundColor: '#0d1117',
+  gridColor: '#3a4a60',
+  diagnosticsEnabled: false,
+  diagnosticsIncludePrompts: false,
+  diagnosticsIncludeRawResponses: false
+};
 
 const App: React.FC = () => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -66,25 +85,20 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('voxelBuilderSettings');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
       } catch (e) {
-        console.error("Failed to parse settings", e);
+        logger.error('settings.parse.failed', { error: e instanceof Error ? e.message : String(e) });
       }
     }
-    return {
-      apiType: 'proxy',
-      apiKey: '',
-      localUrl: 'http://localhost:4269/api/generate',
-      apiEndpoint: 'https://api.openai.com/v1/chat/completions',
-      modelName: 'gpt-4o',
-      backgroundColor: '#0d1117',
-      gridColor: '#3a4a60'
-    };
+    return DEFAULT_SETTINGS;
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isDiagnosticsOpen, setIsDiagnosticsOpen] = useState(false);
   const [isRenderSettingsOpen, setIsRenderSettingsOpen] = useState(false);
   const [renderSettings, setRenderSettings] = useState<RenderSettings>(DEFAULT_RENDER_SETTINGS);
   const [showSplash, setShowSplash] = useState(true);
+  const [clientLogs, setClientLogs] = useState(logger.getEntries());
+  const [serverLogs, setServerLogs] = useState<DiagnosticLogEntry[]>([]);
 
   const relevantRebuilds = useMemo(() => {
       return customRebuilds.filter(r => r.baseModel === currentBaseModel);
@@ -139,6 +153,72 @@ const App: React.FC = () => {
   useEffect(() => { localStorage.setItem('voxelBuilderAutoRotate', JSON.stringify(isAutoRotate)); }, [isAutoRotate]);
   useEffect(() => { localStorage.setItem('voxelBuilderShowGrid', JSON.stringify(showGrid)); }, [showGrid]);
   useEffect(() => { localStorage.setItem('voxelBuilderSceneObjects', JSON.stringify(sceneObjects)); }, [sceneObjects]);
+
+  useEffect(() => logger.subscribe(setClientLogs), []);
+
+  useEffect(() => {
+    logger.setDiagnosticsEnabled(!!settings.diagnosticsEnabled);
+    if (!settings.diagnosticsEnabled) {
+      setServerLogs([]);
+      setIsDiagnosticsOpen(false);
+    }
+  }, [settings.diagnosticsEnabled]);
+
+  useEffect(() => {
+    if (!settings.diagnosticsEnabled || !isDiagnosticsOpen) return;
+    const localUrl = settings.localUrl || 'http://localhost:4269/api/generate';
+    let diagnosticsUrl = '';
+    try {
+      diagnosticsUrl = `${new URL(localUrl).origin}/api/diagnostics/logs`;
+    } catch {
+      logger.warn('diagnostics.server.invalid_url', { localUrl });
+      setServerLogs([]);
+      return;
+    }
+    let cancelled = false;
+    const pullServerLogs = async () => {
+      try {
+        const res = await fetch(diagnosticsUrl);
+        if (!res.ok) return;
+        const payload = await res.json();
+        if (cancelled || !Array.isArray(payload.logs)) return;
+        const normalized = payload.logs.map((log: any) => normalizeExternalLog({ ...log, source: 'server' }));
+        setServerLogs(normalized);
+      } catch (error) {
+        logger.warn('diagnostics.server.fetch_failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    };
+    pullServerLogs();
+    const id = window.setInterval(pullServerLogs, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [settings.diagnosticsEnabled, isDiagnosticsOpen, settings.localUrl]);
+
+  const mergedDiagnosticsLogs = useMemo(() => {
+    return [...clientLogs, ...serverLogs].sort((a, b) => b.timestamp - a.timestamp).slice(0, 200);
+  }, [clientLogs, serverLogs]);
+
+  const handleClearDiagnostics = () => {
+    logger.clear();
+    setServerLogs([]);
+    const localUrl = settings.localUrl || 'http://localhost:4269/api/generate';
+    let clearUrl = '';
+    try {
+      clearUrl = `${new URL(localUrl).origin}/api/diagnostics/clear`;
+    } catch {
+      logger.warn('diagnostics.server.invalid_url', { localUrl });
+      return;
+    }
+    void fetch(clearUrl, { method: 'POST' }).catch((error) => {
+      const errorMessage = getErrorMessage(error, 'Failed to clear server diagnostics');
+      logger.warn('diagnostics.server.clear_failed', { error: errorMessage });
+      alert(`Failed to clear diagnostics: ${errorMessage}`);
+    });
+  };
 
   const handleNewEmptyScene = () => {
     engineRef.current?.loadInitialModel([]);
@@ -279,8 +359,8 @@ const App: React.FC = () => {
       });
       engineRef.current.loadInitialModel(data);
       setCurrentBaseModel('Imported Model');
-    } catch (e: any) {
-      alert('JSON Import Failed: ' + e.message);
+    } catch (e: unknown) {
+      alert('JSON Import Failed: ' + getErrorMessage(e));
     }
   };
 
@@ -401,6 +481,11 @@ const App: React.FC = () => {
         }
 
         const fullPrompt = `${systemContext}\nTask: Generate voxel model of: "${prompt}".\nRules: Scale within 32x32x32. ${poseInstruction}\nDO NOT write scripts or code to generate the voxels. You must output the RAW JSON array directly.\nReturn ONLY JSON array of {x, y, z, color, materialType}.`;
+        if (settings.diagnosticsEnabled && settings.diagnosticsIncludePrompts) {
+            logger.info('ai.prompt.submitted', { mode: promptMode, detail, pose, prompt: fullPrompt });
+        } else {
+            logger.info('ai.prompt.submitted', { mode: promptMode, detail, pose });
+        }
 
         let rawData: any[] = [];
 
@@ -433,7 +518,11 @@ const App: React.FC = () => {
             }
             const apiData = await apiResponse.json();
             let text = apiData.choices?.[0]?.message?.content || '';
-            console.log('[VoxelBuilder] Raw API response text:', text);
+            if (settings.diagnosticsEnabled && settings.diagnosticsIncludeRawResponses) {
+                logger.debug('ai.response.raw', { response: text });
+            } else {
+                logger.debug('ai.response.received', { length: typeof text === 'string' ? text.length : 0 });
+            }
             // Strip markdown fences and // comments
             text = text.replace(/^```(?:json)?\s*$/gim, '').replace(/^```\s*$/gim, '').trim();
             text = text.replace(/\/\/[^\n]*/g, '');
@@ -474,7 +563,7 @@ const App: React.FC = () => {
                 throw new Error(errorMsg);
             }
             rawData = await response.json();
-            console.log('[VoxelBuilder] Bridge response:', Array.isArray(rawData) ? `${rawData.length} voxels` : rawData);
+            logger.info('bridge.response.received', { isArray: Array.isArray(rawData), voxels: Array.isArray(rawData) ? rawData.length : undefined });
         }
 
         if (!Array.isArray(rawData)) {
@@ -529,16 +618,17 @@ const App: React.FC = () => {
                 }]);
             }
         }
-    } catch (err: any) {
-        console.error("Generation failed", err);
-        const errorMsg = err.message || "Something went wrong";
+        logger.info('ai.generation.applied', { mode: promptMode, voxels: voxelData.length });
+    } catch (err: unknown) {
+        const errorMsg = getErrorMessage(err);
+        logger.error('ai.generation.failed', { message: errorMsg });
         alert(`Generation Failed: ${errorMsg}`);
     } finally {
         setIsGenerating(false);
     }
   };
 
-  const handleSaveSettings = (newSettings: any) => {
+  const handleSaveSettings = (newSettings: SettingsData) => {
       setSettings(newSettings);
       localStorage.setItem('voxelBuilderSettings', JSON.stringify(newSettings));
       if (newSettings.backgroundColor) engineRef.current?.setBackgroundColor(newSettings.backgroundColor);
@@ -660,10 +750,10 @@ const App: React.FC = () => {
               } finally {
                   URL.revokeObjectURL(url);
               }
-          }
+      }
           setCurrentBaseModel(file.name);
       } catch (e) {
-          console.error("Failed to load mesh", e);
+          logger.error('mesh.import.failed', { error: e instanceof Error ? e.message : String(e) });
           alert("Failed to load mesh file.");
       }
   };
@@ -674,8 +764,8 @@ const App: React.FC = () => {
           const data = engineRef.current.importVOX(await file.arrayBuffer());
           engineRef.current.loadInitialModel(data);
           setCurrentBaseModel(file.name);
-      } catch (e: any) {
-          alert('VOX Import Failed: ' + e.message);
+      } catch (e: unknown) {
+          alert('VOX Import Failed: ' + getErrorMessage(e));
       }
   };
 
@@ -685,8 +775,8 @@ const App: React.FC = () => {
           const data = engineRef.current.importQB(await file.arrayBuffer());
           engineRef.current.loadInitialModel(data);
           setCurrentBaseModel(file.name);
-      } catch (e: any) {
-          alert('QB Import Failed: ' + e.message);
+      } catch (e: unknown) {
+          alert('QB Import Failed: ' + getErrorMessage(e));
       }
   };
 
@@ -696,8 +786,8 @@ const App: React.FC = () => {
           const data = await engineRef.current.importMinecraft(await file.arrayBuffer());
           engineRef.current.loadInitialModel(data);
           setCurrentBaseModel(file.name);
-      } catch (e: any) {
-          alert('Minecraft Import Failed: ' + e.message);
+      } catch (e: unknown) {
+          alert('Minecraft Import Failed: ' + getErrorMessage(e));
       }
   };
 
@@ -850,6 +940,33 @@ const App: React.FC = () => {
             onSave={handleSaveSettings}
             initialSettings={settings}
             onResample={handleResample}
+            onOpenDiagnostics={() => setIsDiagnosticsOpen(true)}
+          />
+
+          <DiagnosticsPanel
+            isOpen={isDiagnosticsOpen && settings.diagnosticsEnabled}
+            onClose={() => setIsDiagnosticsOpen(false)}
+            logs={mergedDiagnosticsLogs}
+            onClear={handleClearDiagnostics}
+            appVersion={APP_VERSION}
+            settingsSummary={{
+              render: renderSettings,
+              ai: {
+                mode: settings.apiType,
+                model: settings.modelName || 'unknown',
+                endpointHost: (() => {
+                  const candidate = settings.apiType === 'direct'
+                    ? (settings.apiEndpoint || 'https://api.openai.com/v1/chat/completions')
+                    : (settings.localUrl || 'http://localhost:4269/api/generate');
+                  try {
+                    return new URL(candidate).host;
+                  } catch {
+                    return 'invalid-url';
+                  }
+                })()
+              }
+            }}
+            voxelStateSummary={{ voxelCount, appState }}
           />
 
           <JsonModal

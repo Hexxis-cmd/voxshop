@@ -6,6 +6,57 @@ import path from 'node:path';
 const app = express();
 const PORT = 4269;
 const BRIDGE_DIR = path.join(process.cwd(), '_bridge');
+const MAX_LOG_ENTRIES = 200;
+const LEVEL_ORDER = { debug: 10, info: 20, warn: 30, error: 40 };
+const minLevel = process.env.NODE_ENV === 'production' ? 'warn' : 'info';
+const SENSITIVE_KEYS = new Set(['apikey', 'api_key', 'authorization', 'token', 'access_token', 'bearer']);
+let diagnosticsLogs = [];
+
+const redactValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map(redactValue);
+  }
+  if (value && typeof value === 'object') {
+    const out = {};
+    for (const [key, nested] of Object.entries(value)) {
+      if (SENSITIVE_KEYS.has(key.toLowerCase())) {
+        out[key] = '[REDACTED]';
+      } else {
+        out[key] = redactValue(nested);
+      }
+    }
+    return out;
+  }
+  if (typeof value === 'string' && /bearer\s+[A-Za-z0-9_\-\.]+/i.test(value)) {
+    return value.replace(/bearer\s+[A-Za-z0-9_\-\.]+/gi, 'Bearer [REDACTED]');
+  }
+  return value;
+};
+
+const emitLog = (level, event, data) => {
+  const safeData = redactValue(data);
+  const entry = {
+    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    timestamp: Date.now(),
+    source: 'server',
+    level,
+    event,
+    ...(safeData !== undefined ? { data: safeData } : {}),
+  };
+  diagnosticsLogs = [...diagnosticsLogs, entry].slice(-MAX_LOG_ENTRIES);
+
+  if (LEVEL_ORDER[level] >= LEVEL_ORDER[minLevel]) {
+    const method = level === 'debug' ? 'log' : level;
+    console[method](`[${level}] ${event}`, safeData ?? {});
+  }
+};
+
+const logger = {
+  debug: (event, data) => emitLog('debug', event, data),
+  info: (event, data) => emitLog('info', event, data),
+  warn: (event, data) => emitLog('warn', event, data),
+  error: (event, data) => emitLog('error', event, data),
+};
 
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
@@ -19,15 +70,14 @@ app.post('/api/generate', (req, res) => {
     return res.status(400).json({ error: 'Prompt is required' });
   }
 
-  console.log(`\n--- NEW BRIDGE REQUEST ---`);
-  console.log(`Prompt: ${prompt.substring(0, 100)}...`);
+  logger.info('bridge.request.received', { promptLength: typeof prompt === 'string' ? prompt.length : 0 });
 
   const requestFile = path.join(BRIDGE_DIR, 'request.json');
   const responseFile = path.join(BRIDGE_DIR, 'response.json');
   if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
   if (fs.existsSync(responseFile)) fs.unlinkSync(responseFile);
   fs.writeFileSync(requestFile, JSON.stringify(req.body, null, 2));
-  console.log(`Waiting for CLI to process request in ${BRIDGE_DIR}...`);
+  logger.debug('bridge.request.waiting_for_cli', { bridgeDir: BRIDGE_DIR });
   const startTime = Date.now();
   const timeout = 600000;
   let parseRetries = 0;
@@ -51,7 +101,7 @@ app.post('/api/generate', (req, res) => {
 
               const responseData = JSON.parse(responseStr);
               clearInterval(interval);
-              console.log(`SUCCESS: CLI returned ${responseData.length || 0} voxels.`);
+              logger.info('bridge.response.success', { voxels: responseData.length || 0 });
               fs.unlinkSync(requestFile);
               fs.unlinkSync(responseFile);
 
@@ -60,19 +110,28 @@ app.post('/api/generate', (req, res) => {
               parseRetries++;
               if (parseRetries >= MAX_RETRIES) {
                   clearInterval(interval);
-                  console.error("FAILED to parse CLI response after retries:", err.message);
+                  logger.error('bridge.response.parse_failed', { retries: parseRetries, error: err.message });
                   res.status(500).json({ error: 'Failed to parse CLI response', details: err.message });
               } else {
-                  console.log(`Parse attempt ${parseRetries}/${MAX_RETRIES} failed (file may still be writing), retrying...`);
+                  logger.debug('bridge.response.parse_retry', { parseRetries, maxRetries: MAX_RETRIES });
               }
           }
       } else if (Date.now() - startTime > timeout) {
           clearInterval(interval);
-          console.error("TIMEOUT: CLI did not respond in time.");
+          logger.error('bridge.response.timeout', { timeoutMs: timeout });
           if (fs.existsSync(requestFile)) fs.unlinkSync(requestFile);
           res.status(504).json({ error: 'CLI Response Timeout', details: 'The CLI in your terminal did not respond within 10 minutes.' });
       }
   }, 1000);
+});
+
+app.get('/api/diagnostics/logs', (req, res) => {
+  res.json({ logs: diagnosticsLogs });
+});
+
+app.post('/api/diagnostics/clear', (req, res) => {
+  diagnosticsLogs = [];
+  res.json({ ok: true });
 });
 
 app.get('/api/skill', (req, res) => {
@@ -87,8 +146,13 @@ app.post('/api/proxy', async (req, res) => {
     const { endpoint, apiKey, ...payload } = req.body;
     if (!endpoint) return res.status(400).json({ error: 'endpoint is required' });
 
-    console.log(`\n--- PROXY REQUEST ---`);
-    console.log(`Target: ${endpoint}`);
+    let endpointHost = 'invalid-url';
+    try {
+      endpointHost = new URL(endpoint).host;
+    } catch {
+      endpointHost = 'invalid-url';
+    }
+    logger.info('proxy.request.received', { endpointHost });
 
     try {
         const upstream = await fetch(endpoint, {
@@ -100,10 +164,10 @@ app.post('/api/proxy', async (req, res) => {
             body: JSON.stringify(payload)
         });
         const text = await upstream.text();
-        console.log(`Proxy response status: ${upstream.status}`);
+        logger.info('proxy.response.received', { endpointHost, status: upstream.status });
         res.status(upstream.status).set('Content-Type', 'application/json').send(text);
     } catch (err) {
-        console.error('Proxy fetch failed:', err.message);
+        logger.error('proxy.request.failed', { endpointHost, error: err.message });
         res.status(500).json({ error: err.message });
     }
 });
@@ -125,11 +189,10 @@ app.post('/api/presets', (req, res) => {
     if (!name || !data) return res.status(400).json({ error: 'Missing name or data' });
     const filename = name.replace(/[^a-z0-9_\-]/gi, '_').toLowerCase() + '.json';
     fs.writeFileSync(path.join(PRESETS_DIR, filename), JSON.stringify({ name, data }, null, 2));
-    console.log(`Preset saved: ${filename} (${data.length} voxels)`);
+    logger.info('preset.saved', { file: filename, voxels: data.length });
     res.json({ ok: true, file: filename });
 });
 
 app.listen(PORT, () => {
-  console.log(`Voxel Builder Bridge Server running on http://localhost:${PORT}`);
-  console.log(`Bridge Folder: ${BRIDGE_DIR}`);
+  logger.info('server.started', { url: `http://localhost:${PORT}`, bridgeDir: BRIDGE_DIR });
 });

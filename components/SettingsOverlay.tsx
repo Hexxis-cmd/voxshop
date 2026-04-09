@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Save, Server, Key, Cpu, Monitor } from 'lucide-react';
+import { X, Save, Server, Key, Cpu, Monitor, Activity } from 'lucide-react';
 
 export type ApiType = 'proxy' | 'direct';
 
@@ -11,6 +11,9 @@ export interface SettingsData {
   modelName: string;
   backgroundColor: string;
   gridColor: string;
+  diagnosticsEnabled: boolean;
+  diagnosticsIncludePrompts: boolean;
+  diagnosticsIncludeRawResponses: boolean;
 }
 
 interface SettingsOverlayProps {
@@ -19,9 +22,10 @@ interface SettingsOverlayProps {
   onSave: (settings: SettingsData) => void;
   initialSettings: SettingsData;
   onResample: (scale: number) => void;
+  onOpenDiagnostics: () => void;
 }
 
-export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose, onSave, initialSettings, onResample }) => {
+export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClose, onSave, initialSettings, onResample, onOpenDiagnostics }) => {
   const [settings, setSettings] = useState<SettingsData>(initialSettings);
 
   useEffect(() => {
@@ -204,6 +208,40 @@ export const SettingsOverlay: React.FC<SettingsOverlayProps> = ({ isOpen, onClos
               </div>
             </div>
           </div>
+
+          <div className="space-y-4 pt-4 border-t border-white/5">
+            <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] flex items-center gap-2">
+              <Activity size={12} className="text-blue-500/50" />
+              Developer
+            </div>
+            <div className="space-y-3">
+              <ToggleRow
+                label="Enable Diagnostics"
+                value={settings.diagnosticsEnabled}
+                onToggle={(value) => setSettings({ ...settings, diagnosticsEnabled: value })}
+              />
+              <ToggleRow
+                label="Include prompts"
+                value={settings.diagnosticsIncludePrompts}
+                onToggle={(value) => setSettings({ ...settings, diagnosticsIncludePrompts: value })}
+              />
+              <ToggleRow
+                label="Include raw AI responses"
+                value={settings.diagnosticsIncludeRawResponses}
+                onToggle={(value) => setSettings({ ...settings, diagnosticsIncludeRawResponses: value })}
+              />
+              <button
+                onClick={() => {
+                  onSave(settings);
+                  onOpenDiagnostics();
+                }}
+                disabled={!settings.diagnosticsEnabled}
+                className="w-full py-3 px-4 rounded-xl text-[10px] uppercase tracking-widest font-black bg-white/10 hover:bg-white/15 border border-white/10 text-white disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Open Diagnostics panel
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="p-5 border-t border-white/5 bg-white/[0.02]">
@@ -234,4 +272,20 @@ const AlertIcon = ({ size }: { size: number }) => (
 
 const InfoIcon = ({ size }: { size: number }) => (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+);
+
+const ToggleRow = ({ label, value, onToggle }: { label: string; value: boolean; onToggle: (value: boolean) => void }) => (
+  <div className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-black/30 px-4 py-3">
+    <span className="text-[11px] text-slate-200 font-bold">{label}</span>
+    <button
+      type="button"
+      onClick={() => onToggle(!value)}
+      role="switch"
+      aria-checked={value}
+      aria-label={label}
+      className={`w-11 h-6 rounded-full transition-colors p-0.5 ${value ? 'bg-blue-600' : 'bg-slate-600'}`}
+    >
+      <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${value ? 'translate-x-5' : 'translate-x-0'}`} />
+    </button>
+  </div>
 );
